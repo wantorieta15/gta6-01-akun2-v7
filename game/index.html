@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ember Coast — Golden Hour Pursuit</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game-root">
+  <canvas id="scene"></canvas>
+
+  <!-- ============ HUD ============ -->
+  <div id="hud" class="hidden">
+    <!-- Mission panel: top-left -->
+    <div id="mission-panel" class="panel">
+      <div class="mp-job"><span id="job-count">JOB 3/9</span><span id="job-timer">⏱ 02:47</span></div>
+      <div id="job-name">EMBER RUN</div>
+      <div class="mp-stage"><div id="stage-bar"></div></div>
+      <div id="job-stage">STAGE 2/3 — LOSE THE TAIL</div>
+      <div id="job-next">NEXT: Reach the Palm Shores safehouse</div>
+    </div>
+
+    <!-- Cash / wanted / rank: top-right -->
+    <div id="stats-panel">
+      <div id="cash">$12,480</div>
+      <div id="wanted"><span class="star on">★</span><span class="star on">★</span><span class="star on">★</span><span class="star">★</span><span class="star">★</span></div>
+      <div id="rank-row"><span id="rank-name">STREET KING</span><span id="rp-text">RP 8,450</span></div>
+      <div id="rp-bar"><div id="rp-fill"></div></div>
+    </div>
+
+    <!-- Radio: top-center -->
+    <div id="radio-bar">♪ EMBER FM 97.3 — "Golden Hour Drive" · The Coastlines</div>
+
+    <!-- Dispatch: left-middle -->
+    <div id="dispatch-panel" class="panel">
+      <div class="dp-head">📡 ECPD DISPATCH</div>
+      <div id="dp-alert">🚁 AIR UNIT DEPLOYED</div>
+      <div id="dispatch-units"></div>
+    </div>
+
+    <!-- Minimap + district: bottom-left -->
+    <div id="map-wrap">
+      <canvas id="minimap" width="170" height="170"></canvas>
+      <div id="district">📍 PALM SHORES</div>
+      <div id="standing">Standing: RESPECTED ★★★☆☆</div>
+    </div>
+
+    <!-- Dialogue: bottom-center -->
+    <div id="dialog">
+      <div id="dlg-portrait">M</div>
+      <div id="dlg-body">
+        <div id="dlg-name">MARISOL "MARI" VEGA — FIXER</div>
+        <div id="dlg-text">The whole coast is lit up, kid. Lose that heli and the safehouse is yours — don't stop for anything.</div>
+      </div>
+    </div>
+
+    <!-- Crew abilities: bottom-right, above weapon wheel -->
+    <div id="crew-cards">
+      <div class="crew-card" id="card-z">
+        <div class="cc-portrait" style="background:#e2701d">R</div>
+        <div class="cc-info"><div class="cc-name">RICO — NITRO BOOST</div><div class="cc-key">[Z] <span class="ready">READY</span></div></div>
+      </div>
+      <div class="crew-card" id="card-x">
+        <div class="cc-portrait" style="background:#2e86de">D</div>
+        <div class="cc-info"><div class="cc-name">DANTE — SMOKE SCREEN</div><div class="cc-key">[X] <span class="ready">READY</span></div></div>
+      </div>
+      <div class="crew-card" id="card-c">
+        <div class="cc-portrait" style="background:#8e44ad">L</div>
+        <div class="cc-info"><div class="cc-name">LENA — FIELD REPAIR</div><div class="cc-key">[C] <span class="ready">READY</span></div></div>
+      </div>
+    </div>
+
+    <!-- Weapon wheel: bottom-right -->
+    <div id="weapon-wheel"></div>
+
+    <!-- Car info: bottom-right below wheel -->
+    <div id="car-panel">
+      <div id="car-name">VAPID DOMINATOR GT</div>
+      <div id="speed-row"><span id="speed">128</span><span id="speed-unit">MPH</span></div>
+      <div id="cond-row">CONDITION <span id="cond">82%</span> <div id="cond-bar"><div id="cond-fill"></div></div></div>
+      <div id="mode-hint">E — EXIT VEHICLE · ESC — MAP</div>
+    </div>
+
+    <div id="crosshair" class="hidden">+</div>
+    <div id="toast"></div>
+    <div id="objective-marker">▼</div>
+  </div>
+
+  <!-- ============ TITLE ============ -->
+  <div id="title-screen">
+    <div class="title-inner">
+      <div class="title-kicker">EMBER COAST PRESENTS</div>
+      <h1>EMBER COAST</h1>
+      <h2>GOLDEN HOUR PURSUIT</h2>
+      <p class="title-tag">Nine jobs. One sunset. The whole coast on your tail.</p>
+      <div class="save-slots">
+        <div class="save-slot" data-slot="1"><b>SLOT 1</b><span id="slot-1">NEW GAME — JOB 1/9</span></div>
+        <div class="save-slot" data-slot="2"><b>SLOT 2</b><span id="slot-2">NEW GAME — JOB 1/9</span></div>
+        <div class="save-slot" data-slot="3"><b>SLOT 3</b><span id="slot-3">NEW GAME — JOB 1/9</span></div>
+      </div>
+      <div class="title-help">CLICK A SLOT OR PRESS <b>ENTER</b> TO START · WASD DRIVE · E EXIT CAR · ESC MAP</div>
+    </div>
+  </div>
+
+  <!-- ============ PAUSE / MAP ============ -->
+  <div id="pause-screen" class="hidden">
+    <div class="pause-inner">
+      <h2>⏸ PAUSED — EMBER COAST MAP</h2>
+      <div class="pause-cols">
+        <div class="pause-col">
+          <h3>🗺 DISTRICTS</h3>
+          <canvas id="bigmap" width="420" height="300"></canvas>
+          <div id="district-list"></div>
+        </div>
+        <div class="pause-col">
+          <h3>📋 MISSION CHECKLIST</h3>
+          <div id="mission-list"></div>
+          <h3>📊 CAREER STATS</h3>
+          <div id="career-stats"></div>
+          <h3>💾 SAVE SLOTS</h3>
+          <div id="pause-saves"></div>
+          <div class="pause-help">ESC — RESUME · R — RADIO · Click a save slot to save</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="mission-complete" class="hidden">
+    <div class="mc-inner">
+      <div class="mc-rating" id="mc-rating">GOLD</div>
+      <div id="mc-title">JOB COMPLETE</div>
+      <div id="mc-detail"></div>
+    </div>
+  </div>
+</div>
+<script src="vendor/three.min.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
