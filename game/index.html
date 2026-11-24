@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ember Coast — Golden Hour Pursuit</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0f24; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #root { position: fixed; inset: 0; pointer-events: none; }
+  .hud { position: absolute; inset: 0; color: #f2ede6; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+  .panel { position: absolute; background: rgba(12, 14, 24, 0.72); border: 1px solid rgba(255, 194, 28, 0.35); border-radius: 8px; padding: 8px 12px; backdrop-filter: blur(2px); }
+
+  /* Mission, top-left */
+  .mission { left: 16px; top: 14px; width: 372px; }
+  .m-job { font-size: 13px; font-weight: 800; letter-spacing: .06em; color: #ffc21c; }
+  .m-name { font-size: 16px; font-weight: 700; margin-top: 2px; }
+  .bar { height: 8px; background: rgba(255,255,255,.18); border-radius: 4px; margin: 6px 0 4px; overflow: hidden; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, #ff5a1f, #ffc21c); border-radius: 4px; }
+  .m-next { font-size: 12px; color: #cfe3ff; }
+  .m-timer { font-size: 12px; color: #ffd23f; margin-top: 2px; font-weight: 700; }
+
+  /* Dispatch, left below mission */
+  .dispatch { left: 16px; top: 158px; width: 372px; }
+  .d-head { font-size: 12px; font-weight: 800; letter-spacing: .08em; color: #ff9f1c; border-bottom: 1px solid rgba(255,255,255,.2); padding-bottom: 5px; margin-bottom: 5px; }
+  .d-row { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 2.5px 0; }
+  .d-call { font-weight: 800; width: 96px; color: #fff; }
+  .d-role { width: 84px; color: #b9c6d8; font-size: 11px; }
+  .d-dist { width: 48px; text-align: right; font-weight: 700; color: #ffd23f; font-variant-numeric: tabular-nums; }
+  .d-tag { margin-left: auto; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 3px; letter-spacing: .04em; }
+  .d-foot { font-size: 11px; color: #ffb37a; margin-top: 5px; border-top: 1px solid rgba(255,255,255,.2); padding-top: 5px; }
+
+  /* Money / wanted / rank, top-right */
+  .money { right: 16px; top: 14px; width: 250px; text-align: right; }
+  .cash { font-size: 26px; font-weight: 800; color: #7dff9a; font-variant-numeric: tabular-nums; }
+  .stars { font-size: 20px; color: #ffc21c; letter-spacing: 2px; line-height: 1.1; }
+  .rank { font-size: 12px; color: #e8e2d5; margin-top: 2px; font-weight: 600; }
+
+  /* Radio, top-centre */
+  .radio { left: 50%; top: 14px; transform: translateX(-50%); width: 300px; text-align: center; padding: 6px 10px; }
+  .r-station { font-size: 13px; font-weight: 800; color: #ff8fb0; }
+  .r-song { font-size: 12px; color: #e8e2d5; }
+
+  /* Crew abilities, mid-right */
+  .abilities { position: absolute; right: 16px; top: 268px; width: 210px; display: flex; flex-direction: column; gap: 8px; }
+  .ability { display: flex; gap: 8px; align-items: center; background: rgba(12, 14, 24, 0.72); border: 1px solid rgba(79, 195, 247, 0.45); border-radius: 8px; padding: 7px 9px; }
+  .ability.cooling { opacity: .55; }
+  .a-portrait { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #ff5a1f, #ffc21c); color: #14100a; font-weight: 800; font-size: 18px; display: flex; align-items: center; justify-content: center; flex: none; }
+  .a-body { min-width: 0; }
+  .a-name { font-size: 12px; font-weight: 800; color: #fff; }
+  .a-who { font-size: 11px; color: #b9c6d8; }
+  .a-status { font-size: 11px; font-weight: 800; }
+  .a-status.ready { color: #37d67a; }
+  .a-status.cooling { color: #ffb37a; }
+
+  /* Weapon wheel, bottom-right */
+  .weapons { position: absolute; right: 16px; bottom: 128px; display: flex; gap: 6px; }
+  .w-slot { width: 52px; background: rgba(12, 14, 24, 0.72); border: 1px solid rgba(255,255,255,.28); border-radius: 6px; padding: 5px 4px 4px; text-align: center; }
+  .w-slot.active { border-color: #ffc21c; background: rgba(255, 194, 28, 0.22); }
+  .w-slot.locked { opacity: .5; }
+  .w-num { font-size: 10px; font-weight: 800; color: #ffc21c; }
+  .w-name { font-size: 9.5px; font-weight: 700; color: #fff; white-space: nowrap; }
+  .w-ammo { font-size: 10px; color: #b9c6d8; font-variant-numeric: tabular-nums; }
+
+  /* Speedometer, bottom-right */
+  .speed { right: 16px; bottom: 14px; width: 250px; text-align: right; padding: 8px 14px; }
+  .s-car { font-size: 13px; font-weight: 800; letter-spacing: .06em; color: #ffc21c; }
+  .s-num { font-size: 52px; font-weight: 800; line-height: 1; color: #fff; font-variant-numeric: tabular-nums; display: inline; }
+  .s-unit { display: inline; font-size: 13px; color: #b9c6d8; margin-left: 6px; }
+  .s-cond { height: 10px; background: rgba(255,255,255,.18); border-radius: 5px; margin-top: 6px; overflow: hidden; position: relative; }
+  .s-cond-fill { height: 100%; border-radius: 5px; }
+  .s-cond-label { position: absolute; right: 6px; top: -1px; font-size: 9px; font-weight: 800; color: #fff; letter-spacing: .04em; }
+
+  /* District + minimap, bottom-left */
+  .district { left: 16px; bottom: 186px; width: 190px; padding: 6px 10px; }
+  .dist-name { font-size: 14px; font-weight: 800; color: #ffc21c; letter-spacing: .05em; }
+  .dist-stand { font-size: 11px; color: #d8e2f0; }
+  .minimap-wrap { position: absolute; left: 16px; bottom: 14px; width: 158px; height: 158px; border: 2px solid rgba(255, 194, 28, 0.55); border-radius: 50%; overflow: hidden; background: rgba(10,16,26,.8); }
+  .minimap { width: 150px; height: 150px; display: block; margin: 2px; border-radius: 50%; }
+  .mm-north { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 800; color: #ffc21c; text-shadow: 0 1px 2px #000; }
+
+  /* Dialogue, bottom-centre */
+  .dialogue { left: 50%; bottom: 14px; transform: translateX(-50%); width: 500px; display: flex; gap: 10px; align-items: center; padding: 10px 14px; }
+  .dlg-portrait { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #4fc3f7, #9a4fd0); color: #fff; font-weight: 800; font-size: 22px; display: flex; align-items: center; justify-content: center; flex: none; border: 2px solid rgba(255,255,255,.5); }
+  .dlg-name { font-size: 13px; font-weight: 800; color: #ffd23f; }
+  .dlg-text { font-size: 13.5px; line-height: 1.35; color: #fff; }
+
+  .toast { position: absolute; left: 50%; top: 76px; transform: translateX(-50%); background: rgba(12,14,24,.8); border: 1px solid rgba(255,194,28,.5); border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 700; color: #ffd23f; opacity: 0; transition: opacity .2s; white-space: nowrap; }
+
+  /* Full screens */
+  .screen { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; color: #f2ede6; text-align: center; pointer-events: none; }
+  .title-screen { background: linear-gradient(180deg, rgba(26,10,40,.25) 0%, rgba(26,10,40,.55) 55%, rgba(10,6,18,.88) 100%); }
+  .t-kicker { font-size: 13px; letter-spacing: .35em; font-weight: 700; color: #ffb37a; }
+  .t-logo { font-size: 84px; font-weight: 900; letter-spacing: .02em; line-height: 1; color: #fff; text-shadow: 0 0 32px rgba(255,90,31,.9), 0 4px 0 rgba(0,0,0,.4); margin-top: 10px; }
+  .t-sub { font-size: 30px; font-weight: 800; letter-spacing: .28em; color: #ffc21c; margin-top: 6px; }
+  .t-tag { font-size: 15px; color: #e8e2d5; max-width: 640px; margin-top: 14px; line-height: 1.45; }
+  .t-slots { display: flex; gap: 12px; margin-top: 26px; }
+  .t-slot { width: 230px; background: rgba(12,14,24,.78); border: 1px solid rgba(255,255,255,.25); border-radius: 8px; padding: 10px 12px; text-align: left; }
+  .t-slot.selected { border-color: #ffc21c; box-shadow: 0 0 0 1px #ffc21c; }
+  .t-slot-label { font-size: 13px; font-weight: 800; color: #ffc21c; }
+  .t-slot-detail { font-size: 12px; color: #d8e2f0; margin-top: 3px; }
+  .t-enter { margin-top: 26px; font-size: 16px; font-weight: 800; letter-spacing: .12em; color: #fff; animation: pulse 1.4s infinite; }
+  .t-controls { margin-top: 12px; font-size: 12.5px; color: #b9c6d8; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+  .pause-screen { background: rgba(8, 10, 20, 0.94); }
+  .p-inner { width: 1060px; max-width: 94vw; }
+  .p-title { font-size: 30px; font-weight: 900; letter-spacing: .08em; color: #ffc21c; }
+  .p-cols { display: flex; gap: 18px; margin-top: 18px; text-align: left; }
+  .p-col { flex: 1; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.16); border-radius: 10px; padding: 12px 14px; }
+  .p-h { font-size: 13px; font-weight: 800; letter-spacing: .08em; color: #ff9f1c; margin-bottom: 8px; }
+  .p-dist { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12.5px; }
+  .p-dist.current { color: #ffd23f; font-weight: 700; }
+  .p-dist-name { width: 118px; }
+  .p-dist-bar { flex: 1; height: 7px; background: rgba(255,255,255,.15); border-radius: 4px; overflow: hidden; }
+  .p-dist-fill { display: block; height: 100%; background: linear-gradient(90deg, #ff5a1f, #ffc21c); }
+  .p-dist-val { width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+  .p-job { display: flex; justify-content: space-between; padding: 4.5px 0; font-size: 12.5px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .p-job.done { color: #9fd8b0; }
+  .p-job-rating { font-weight: 800; }
+  .p-job-rating.gold { color: #ffd23f; }
+  .p-job-rating.active { color: #4fc3f7; }
+  .p-stat { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .p-stat-val { font-weight: 800; color: #ffd23f; font-variant-numeric: tabular-nums; }
+  .p-resume { margin-top: 18px; font-size: 13px; font-weight: 700; color: #e8e2d5; }
+
+  .over-screen { background: rgba(20, 4, 8, 0.82); }
+  .o-title { font-size: 72px; font-weight: 900; letter-spacing: .1em; color: #ff5a3c; text-shadow: 0 0 28px rgba(255,60,40,.8); }
+  .o-text { font-size: 16px; color: #f2ede6; margin-top: 10px; max-width: 560px; line-height: 1.5; }
+  .o-enter { margin-top: 22px; font-size: 15px; font-weight: 800; letter-spacing: .1em; animation: pulse 1.4s infinite; }
+
+  .banner-screen { background: transparent; align-items: flex-start; padding-top: 180px; }
+  .b-text { font-size: 34px; font-weight: 900; color: #ffd23f; text-shadow: 0 2px 12px rgba(0,0,0,.8); background: rgba(12,14,24,.7); border: 1px solid rgba(255,194,28,.6); border-radius: 10px; padding: 14px 26px; }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Ember Coast — Golden Hour Pursuit: a 3D open-world crime chase at sunset"></canvas>
+<div id="root"></div>
+<p id="status" role="status" aria-live="polite"></p>
+<script src="./vendor/three.min.js"></script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
